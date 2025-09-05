@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Mihon extensions
         uses: actions/checkout@v4
         with:
-          repository: mihonapp/extensions-sources
+          repository: mihonapp/extensions
           path: mihon-extensions
 
       - name: Copy extension into extensions repo
@@ -22,7 +22,7 @@ jobs:
           cp -R src/en/thunderscans mihon-extensions/src/en/
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -31,9 +31,9 @@ jobs:
         working-directory: mihon-extensions
         run: ./gradlew :src:en:thunderscans:assembleRelease --no-daemon
 
-      - name: Checkout Mihon extensions
-        uses: actions/checkout@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-           repository: mihonapp/extensions
-           path: mihon-extensions
-    
+          name: thunder-scans-apk
+          path: mihon-extensions/src/en/thunderscans/build/outputs/apk/release/*.apk
+          
