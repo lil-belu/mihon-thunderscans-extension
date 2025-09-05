@@ -29,7 +29,7 @@ jobs:
         run: ./gradlew :src:en:thunderscans:assembleRelease --no-daemon
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: thunder-scans-apk
           path: mihon-extensions/src/en/thunderscans/build/outputs/apk/release/*.apk
