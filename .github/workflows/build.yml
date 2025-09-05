@@ -76,13 +76,14 @@ jobs:
           echo "Copied extension into mihon-extensions/src/en/"
 
       - name: Debug: show extension module files
-        run: |
-          echo "Contents (your repo) src/en:"
-          ls -la src/en || true
-          echo "Contents (mihon-extensions) src/en:"
-          ls -la mihon-extensions/src/en || true
-          echo "thunderscans folder listing (mihon-extensions):"
-          ls -la mihon-extensions/src/en/thunderscans || true
+  run: |
+    echo "Contents (your repo) src/en:"
+    ls -la src/en || true
+    echo "Contents (mihon-extensions) src/en:"
+    ls -la mihon-extensions/src/en || true
+    echo "thunderscans folder listing (mihon-extensions):"
+    ls -la mihon-extensions/src/en/thunderscans || true
+
 
       - name: List Gradle projects
         working-directory: mihon-extensions
