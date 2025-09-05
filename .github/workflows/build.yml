@@ -8,11 +8,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Clone Mihon extensions
-        run: git clone --depth 1 https://github.com/mihonapp/extensions-sources.git mihon-extensions
-
+      - name: Checkout Mihon extensions
+        uses: actions/checkout@v4
+        with:
+          repository: mihonapp/extensions-sources
+          path: mihon-extensions
 
       - name: Copy extension into extensions repo
         run: |
