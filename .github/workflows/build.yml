@@ -1,0 +1,113 @@
+name: Build ThunderScans Extension
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
+      ANDROID_HOME: ${{ runner.temp }}/android-sdk
+      JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF8
+
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Checkout Mihon extensions repo
+        uses: actions/checkout@v4
+        with:
+          repository: mihonapp/extensions
+          path: mihon-extensions
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Runner / Java / Git info
+        run: |
+          echo "Runner: $(uname -a)"
+          java -version || true
+          javac -version || true
+          git --version || true
+          echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
+          echo "Working dir: $(pwd)"
+
+      - name: Set up JDK 17 and Gradle cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install Android SDK (cmdline-tools, platform-tools, platforms, build-tools)
+        run: |
+          set -euo pipefail
+          SDK_ROOT="$ANDROID_SDK_ROOT"
+          mkdir -p "$SDK_ROOT"
+          cd "$SDK_ROOT"
+          CLI_ZIP="commandlinetools-linux-9477386_latest.zip"
+          curl -fsSL "https://dl.google.com/android/repository/${CLI_ZIP}" -o "${CLI_ZIP}"
+          unzip -q "${CLI_ZIP}" -d cmdline-tools-tmp
+          mkdir -p cmdline-tools/latest
+          if [ -d cmdline-tools-tmp/cmdline-tools ]; then
+            mv cmdline-tools-tmp/cmdline-tools/* cmdline-tools/latest/
+          else
+            mv cmdline-tools-tmp/* cmdline-tools/latest/
+          fi
+          rm -rf cmdline-tools-tmp "${CLI_ZIP}"
+          export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$PATH"
+          yes | sdkmanager --sdk_root="$SDK_ROOT" --licenses || true
+          sdkmanager --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;33.0.2" || true
+        shell: bash
+
+      - name: Make gradlew executable
+        run: chmod +x mihon-extensions/gradlew || true
+
+      - name: Copy extension into mihon-extensions
+        run: |
+          set -e
+          if [ ! -d "src/en/thunderscans" ]; then
+            echo "ERROR: src/en/thunderscans not found in this repo!"
+            ls -la src/en || true
+            exit 1
+          fi
+          mkdir -p mihon-extensions/src/en
+          cp -a src/en/thunderscans mihon-extensions/src/en/
+          echo "Copied extension into mihon-extensions/src/en/"
+
+      - name: Debug: show extension module files
+        run: |
+          echo "Contents (your repo) src/en:"
+          ls -la src/en || true
+          echo "Contents (mihon-extensions) src/en:"
+          ls -la mihon-extensions/src/en || true
+          echo "thunderscans folder listing (mihon-extensions):"
+          ls -la mihon-extensions/src/en/thunderscans || true
+
+      - name: List Gradle projects
+        working-directory: mihon-extensions
+        run: |
+          set -e
+          echo "Listing gradle projects..."
+          ./gradlew projects --no-daemon || true
+
+      - name: Build extension (Gradle)
+        working-directory: mihon-extensions
+        run: |
+          set -e
+          echo "Gradle working directory: $(pwd)"
+          echo "Attempting: ./gradlew :src:en:thunderscans:assembleRelease"
+          ./gradlew :src:en:thunderscans:assembleRelease --no-daemon -Porg.gradle.jvmargs=-Xmx1536m
+        timeout-minutes: 30
+
+      - name: List APK outputs
+        run: |
+          echo "Looking for APKs in mihon-extensions/src/en/thunderscans/build/outputs/apk/release/"
+          ls -la mihon-extensions/src/en/thunderscans/build/outputs/apk/release || true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: thunder-scans-apk
+          path: mihon-extensions/src/en/thunderscans/build/outputs/apk/release/*.apk
+          
