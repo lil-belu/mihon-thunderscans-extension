@@ -6,31 +6,82 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      TZ: UTC
+
     steps:
+      # 1) checkout your repo (the extension files you added)
       - name: Checkout this repo
         uses: actions/checkout@v4
 
-      - name: Checkout Mihon extensions
+      # 2) checkout the official Mihon/Tachiyomi extensions repo into a subfolder
+      - name: Checkout Mihon extensions repo
         uses: actions/checkout@v4
         with:
           repository: mihonapp/extensions
           path: mihon-extensions
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Copy extension into extensions repo
+      # 3) Basic runner info for debugging
+      - name: Runner / Java / Git info
         run: |
-          mkdir -p mihon-extensions/src/en
-          cp -R src/en/thunderscans mihon-extensions/src/en/
+          echo "Runner: $(uname -a)"
+          java -version || true
+          javac -version || true
+          git --version || true
 
-      - name: Set up JDK 17
+      # 4) Setup JDK 17 and enable Gradle caching
+      - name: Set up JDK 17 and Gradle cache
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
+          cache: gradle
 
-      - name: Build extension
+      # 5) Make sure gradlew is executable (gradle wrapper in mihon repo)
+      - name: Make gradlew executable
+        run: chmod +x mihon-extensions/gradlew || true
+
+      # 6) Copy your extension into the mihon repo (safe copy)
+      - name: Copy extension into mihon-extensions
+        run: |
+          set -e
+          mkdir -p mihon-extensions/src/en
+          if [ -d "src/en/thunderscans" ]; then
+            cp -a src/en/thunderscans mihon-extensions/src/en/
+          else
+            echo "ERROR: src/en/thunderscans does not exist in this repo!"
+            ls -la src/en || true
+            exit 1
+          fi
+
+      # 7) Quick file-debug: show that module exists
+      - name: Debug: show extension module files
+        run: |
+          echo "Contents of your repo src/en:"
+          ls -la src/en || true
+          echo "Contents of mihon-extensions/src/en:"
+          ls -la mihon-extensions/src/en || true
+          echo "Show the extension build folder if it exists:"
+          ls -la mihon-extensions/src/en/thunderscans || true
+
+      # 8) Build the extension (Gradle)
+      - name: Build extension (Gradle)
         working-directory: mihon-extensions
-        run: ./gradlew :src:en:thunderscans:assembleRelease --no-daemon
+        run: |
+          set -e
+          echo "Gradle working directory: $(pwd)"
+          echo "Run ./gradlew :src:en:thunderscans:assembleRelease"
+          ./gradlew :src:en:thunderscans:assembleRelease --no-daemon -Porg.gradle.jvmargs=-Xmx1536m
+        timeout-minutes: 20
 
+      # 9) Show outputs (for debugging if APK not present)
+      - name: List APK outputs
+        run: |
+          echo "Looking for APKs in mihon-extensions/src/en/thunderscans/build/outputs/apk/release/"
+          ls -la mihon-extensions/src/en/thunderscans/build/outputs/apk/release || true
+
+      # 10) Upload APK artifact if present
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
