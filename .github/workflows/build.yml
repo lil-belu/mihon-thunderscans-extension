@@ -39,7 +39,7 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Install Android SDK (cmdline-tools, platform-tools, platforms, build-tools)
+      - name: Install Android SDK
         run: |
           set -euo pipefail
           SDK_ROOT="$ANDROID_SDK_ROOT"
@@ -58,10 +58,10 @@ jobs:
           export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$PATH"
           yes | sdkmanager --sdk_root="$SDK_ROOT" --licenses || true
           sdkmanager --sdk_root="$SDK_ROOT" "platform-tools" "platforms;android-33" "build-tools;33.0.2" || true
-        shell: bash
 
       - name: Make gradlew executable
-        run: chmod +x mihon-extensions/gradlew || true
+        run: |
+          chmod +x mihon-extensions/gradlew || true
 
       - name: Copy extension into mihon-extensions
         run: |
@@ -98,7 +98,6 @@ jobs:
           echo "Gradle working directory: $(pwd)"
           echo "Attempting: ./gradlew :src:en:thunderscans:assembleRelease"
           ./gradlew :src:en:thunderscans:assembleRelease --no-daemon -Porg.gradle.jvmargs=-Xmx1536m
-        timeout-minutes: 30
 
       - name: List APK outputs
         run: |
